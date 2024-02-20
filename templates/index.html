@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sensor Data</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 20px;
+            color: #333;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+        }
+
+        .container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-gap: 20px;
+}
+
+.container > div {
+    padding: 20px;
+    border: 1px solid #ccc;
+}
+
+.container > div:nth-child(odd) {
+    background-color: #f9f9f9;
+}
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div>
+            <h1>Sensor Data Line Chart</h1>
+            <canvas id="myChart" width="800" height="400"></canvas>
+        </div>
+        <div>
+            <h1>Previous Sensor Data Line Chart</h1>
+            <label for="start_timestamp">Select start timestamp:</label>
+            <input type="datetime-local" id="start_timestamp" name="start_timestamp">
+            <label for="end_timestamp">Select end timestamp:</label>
+            <input type="datetime-local" id="end_timestamp" name="end_timestamp">
+            <input type="button" id="submit" style="cursor: pointer;" value="Submit">
+            <canvas id="myChart1" width="800" height="400"></canvas>
+        </div>
+    </div>
+    
+    <h1 style="text-align: center;">Sensor Data in Table Form</h1>
+    <table border="1" width="100%">
+        <tr>
+            <th>Process Id</th>
+            <th>Sensor ID</th>
+            <th> Measurement Value</th>
+            <th> TimeStamp</th>
+        </tr>
+        <tbody id="data">
+
+        </tbody>
+       
+       
+    </table>
+    <script>
+         var ctx1 = document.getElementById('myChart1').getContext('2d');
+        var myChart1 = new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Measurement Value',
+                    data: [],
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    $(function () {
+    $('#submit').on('click', function () {
+         // Fetch data every 1 second
+         var start_timestamp = $('#start_timestamp').val()
+        var end_timestamp = $('#end_timestamp').val()
+            $.ajax({
+                url: '/previous-index',
+                type: 'GET',
+                data:{start_timestamp:start_timestamp,end_timestamp:end_timestamp},
+                success: function(response) {
+                    console.log(response.length);
+                    var labels = [];
+                    var data = [];
+                    for (var i = 0; i < response.length; i++) {
+                        labels.push(response[i].timestamp);
+                        data.push(response[i].measurement_value);
+                    }
+                    myChart1.data.labels = labels;
+                    myChart1.data.datasets[0].data = data;
+                    myChart1.update();
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error:', error);
+                }
+            });
+        
+    });
+});
+
+function fetchDataPrevious() {
+            $.ajax({
+                url: '/index',
+                type: 'GET',
+                success: function(response) {
+                    var labels = [];
+                    var data = [];
+                    for (var i = 0; i < response.length; i++) {
+                        labels.push(response[i].timestamp);
+                        data.push(response[i].measurement_value);
+                    }
+                    myChart1.data.labels = labels;
+                    myChart1.data.datasets[0].data = data;
+                    myChart1.update();
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error:', error);
+                }
+            });
+        }
+        fetchDataPrevious()
+        var ctx = document.getElementById('myChart').getContext('2d');
+        var myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Measurement Value',
+                    data: [],
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        function fetchData() {
+            $.ajax({
+                url: '/index',
+                type: 'GET',
+                success: function(response) {
+                    var labels = [];
+                    var data = [];
+                    for (var i = 0; i < response.length; i++) {
+                        labels.push(response[i].timestamp);
+                        data.push(response[i].measurement_value);
+                    }
+                    myChart.data.labels = labels;
+                    myChart.data.datasets[0].data = data;
+                    myChart.update();
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error:', error);
+                }
+            });
+        }
+
+        // Fetch data every 1 second
+        setInterval(fetchData,250);
+        //fetchData()
+
+    
+
+        
+
+        function fetchDataTable() {
+        $.ajax({
+            url: '/index_tabledata',
+            type: 'GET',
+            success: function(response) {
+               // if (Array.isArray(response)) {
+                console.log(response.length);
+                console.log(response[0]);
+                    var html = '';
+                    for (var i = 0; i < response.length; i++) {
+                            var data = response[i];
+                            html +='<tr><td>' + data.process_id + '</td><td>' + data.sensor_id + '</td><td>' + data.measurement_value + '</td><td>' + data.timestamp + '</td></tr>';
+                        }
+                    $('#data').html(html); // Update the content of the div with id 'data'
+             //   } else {
+                   // console.error('Response is not an array:', response);
+              //  }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error:', error);
+            }
+        });
+    }
+
+    // Fetch data every 1 second
+   setInterval(fetchDataTable, 250);
+    //fetchDataTable()
+
+</script>
+</body>
+</html>
